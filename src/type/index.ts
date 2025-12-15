@@ -19,6 +19,7 @@ export enum ASRServer {
   gemini = "gemini",
   vosk = "vosk",
   whisper = "whisper",
+  m5stack = "m5stack",
 }
 
 export enum LLMServer {
@@ -27,6 +28,7 @@ export enum LLMServer {
   ollama = "ollama",
   gemini = "gemini",
   grok = "grok",
+  m5stack = "m5stack",
 }
 
 export enum TTSServer {
@@ -35,6 +37,7 @@ export enum TTSServer {
   tencent = "tencent",
   gemini = "gemini",
   piper = "piper",
+  m5stack = "m5stack",
 }
 
 export enum ImageGenerationServer {
