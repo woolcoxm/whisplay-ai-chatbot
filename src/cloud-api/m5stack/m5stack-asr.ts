@@ -1,14 +1,20 @@
 import fs from "fs";
 import { spawn } from "child_process";
+import os from "os";
+import path from "path";
 import { ASRServer } from "../../type";
 
 const asrServer = (process.env.ASR_SERVER || "").toLowerCase() as ASRServer;
 
 // This implementation assumes SenseVoice is set up in a virtual environment as per M5Stack docs
 // and `main.py` is available.
-// We need the path to the sensevoice virtualenv python and the main.py script.
-const senseVoicePythonPath = process.env.M5STACK_SENSEVOICE_PYTHON_PATH || "/home/m5stack/rsp/SenseVoice/sensevoice/bin/python";
-const senseVoiceScriptPath = process.env.M5STACK_SENSEVOICE_SCRIPT_PATH || "/home/m5stack/rsp/SenseVoice/main.py";
+// We dynamically construct the default path based on the user's home directory.
+const homeDir = os.homedir();
+const defaultPythonPath = path.join(homeDir, "rsp/SenseVoice/sensevoice/bin/python");
+const defaultScriptPath = path.join(homeDir, "rsp/SenseVoice/main.py");
+
+const senseVoicePythonPath = process.env.M5STACK_SENSEVOICE_PYTHON_PATH || defaultPythonPath;
+const senseVoiceScriptPath = process.env.M5STACK_SENSEVOICE_SCRIPT_PATH || defaultScriptPath;
 
 let isSenseVoiceAvailable = false;
 
@@ -17,7 +23,10 @@ export const checkSenseVoiceInstallation = (): boolean => {
       isSenseVoiceAvailable = true;
       return true;
   }
-  console.warn("SenseVoice python or script not found at default paths.");
+  console.warn(`SenseVoice python or script not found.
+    Checked Python: ${senseVoicePythonPath}
+    Checked Script: ${senseVoiceScriptPath}
+    Please set M5STACK_SENSEVOICE_PYTHON_PATH and M5STACK_SENSEVOICE_SCRIPT_PATH in .env`);
   return false;
 };
 
