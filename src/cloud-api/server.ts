@@ -46,6 +46,12 @@ import {
   TTSProcessorFunction,
 } from "./interface";
 import piperTTS from "./local/piper-tts";
+import {
+  chatWithLLMStream as M5StackLLMStream,
+  resetChatHistory as M5StackResetChatHistory,
+} from "./m5stack/m5stack-llm";
+import M5StackTTS from "./m5stack/m5stack-tts";
+import { recognizeAudio as M5StackASR } from "./m5stack/m5stack-asr";
 
 dotenv.config();
 
@@ -96,14 +102,21 @@ switch (asrServer) {
   case ASRServer.whisper:
     recognizeAudio = WisperASR;
     break;
+  case ASRServer.m5stack:
+    recognizeAudio = M5StackASR;
+    break;
   default:
     console.warn(
-      `unknown asr server: ${asrServer}, should be VOLCENGINE/TENCENT/OPENAI/GEMINI/VOSK/WHISPER`
+      `unknown asr server: ${asrServer}, should be VOLCENGINE/TENCENT/OPENAI/GEMINI/VOSK/WHISPER/M5STACK`
     );
     break;
 }
 
 switch (llmServer) {
+  case LLMServer.m5stack:
+    chatWithLLMStream = M5StackLLMStream;
+    resetChatHistory = M5StackResetChatHistory;
+    break;
   case LLMServer.volcengine:
     chatWithLLMStream = VolcengineLLMStream;
     resetChatHistory = VolcengineResetChatHistory;
@@ -126,12 +139,15 @@ switch (llmServer) {
     break;
   default:
     console.warn(
-      `unknown llm server: ${llmServer}, should be VOLCENGINE/OPENAI/GEMINI/OLLAMA/GROK`
+      `unknown llm server: ${llmServer}, should be VOLCENGINE/OPENAI/GEMINI/OLLAMA/GROK/M5STACK`
     );
     break;
 }
 
 switch (ttsServer) {
+  case TTSServer.m5stack:
+    ttsProcessor = M5StackTTS;
+    break;
   case TTSServer.volcengine:
     ttsProcessor = VolcengineTTS;
     break;
@@ -149,7 +165,7 @@ switch (ttsServer) {
     break;
   default:
     console.warn(
-      `unknown tts server: ${ttsServer}, should be VOLCENGINE/TENCENT/OPENAI/GEMINI/PIPER`
+      `unknown tts server: ${ttsServer}, should be VOLCENGINE/TENCENT/OPENAI/GEMINI/PIPER/M5STACK`
     );
     break;
 }
