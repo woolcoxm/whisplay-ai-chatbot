@@ -2,6 +2,7 @@ import { display } from "./device/display";
 import Battery from "./device/battery";
 import ChatFlow from "./core/ChatFlow";
 import dotenv from "dotenv";
+import { initImageLists } from "./utils/image";
 
 dotenv.config();
 
@@ -15,6 +16,9 @@ battery.addListener("batteryLevel", (data: any) => {
   });
 });
 
-new ChatFlow({
-  enableCamera: process.env.ENABLE_CAMERA === "true",
-});
+(async () => {
+  await initImageLists();
+  new ChatFlow({
+    enableCamera: process.env.ENABLE_CAMERA === "true",
+  });
+})();
