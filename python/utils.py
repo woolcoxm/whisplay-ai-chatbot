@@ -77,10 +77,7 @@ class ImageUtils:
     g = (np_img[:, :, 1] >> 2).astype(np.uint16)
     b = (np_img[:, :, 2] >> 3).astype(np.uint16)
     rgb565 = (r << 11) | (g << 5) | b
-    high_byte = (rgb565 >> 8).astype(np.uint8)
-    low_byte = (rgb565 & 0xFF).astype(np.uint8)
-    interleaved = np.dstack((high_byte, low_byte)).flatten().tolist()
-    return interleaved
+    return rgb565.byteswap().tobytes()
   
   @staticmethod
   def convertCameraFrameToRGB565(frame: np.ndarray, width: int, height: int):
