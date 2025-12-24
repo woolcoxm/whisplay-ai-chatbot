@@ -51,6 +51,11 @@ class RenderThread(threading.Thread):
         self.text_cache_image = None
         self.current_render_text = ""
 
+        # Initialize header image and draw object
+        self.header_height = 88 + 10  # header + margin
+        self.header_image = Image.new("RGBA", (self.whisplay.LCD_WIDTH, self.header_height), (0, 0, 0, 255))
+        self.header_draw = ImageDraw.Draw(self.header_image)
+
     def render_init_screen(self):
         # Display logo on startup
         logo_path = os.path.join("img", "logo.png")
@@ -95,29 +100,28 @@ class RenderThread(threading.Thread):
                     print(f"[Render] Failed to load image {current_image_path}: {e}")
         else:
             current_image = None
-            header_height = 88 + 10  # header + margin
-            # create a black background image for header
-            image = Image.new("RGBA", (self.whisplay.LCD_WIDTH, header_height), (0, 0, 0, 255))
-            draw = ImageDraw.Draw(image)
-            
+
+            # clear header image
+            self.header_draw.rectangle((0, 0, self.whisplay.LCD_WIDTH, self.header_height), fill=(0, 0, 0, 255))
+
             clock_font_size = 24
             # clock_font = ImageFont.truetype(self.font_path, clock_font_size)
 
             # current_time = time.strftime("%H:%M:%S")
             # draw.text((self.whisplay.LCD_WIDTH // 2, self.whisplay.LCD_HEIGHT // 2), current_time, font=clock_font, fill=(255, 255, 255, 255))
-            
+
             # render header
-            self.render_header(image, draw, status, emoji, battery_level, battery_color)
-            self.whisplay.draw_image(0, 0, self.whisplay.LCD_WIDTH, header_height, ImageUtils.image_to_rgb565(image, self.whisplay.LCD_WIDTH, header_height))
+            self.render_header(self.header_image, self.header_draw, status, emoji, battery_level, battery_color)
+            self.whisplay.draw_image(0, 0, self.whisplay.LCD_WIDTH, self.header_height, ImageUtils.image_to_rgb565(self.header_image, self.whisplay.LCD_WIDTH, self.header_height))
 
             # render main text area
-            text_area_height = self.whisplay.LCD_HEIGHT - header_height
+            text_area_height = self.whisplay.LCD_HEIGHT - self.header_height
             text_bg_image = Image.new("RGBA", (self.whisplay.LCD_WIDTH, text_area_height), (0, 0, 0, 255))
             text_draw = ImageDraw.Draw(text_bg_image)
             self.render_main_text(text_bg_image, text_area_height, text_draw, text, current_scroll_speed)
-            self.whisplay.draw_image(0, header_height, self.whisplay.LCD_WIDTH, text_area_height, ImageUtils.image_to_rgb565(text_bg_image, self.whisplay.LCD_WIDTH, text_area_height))
+            self.whisplay.draw_image(0, self.header_height, self.whisplay.LCD_WIDTH, text_area_height, ImageUtils.image_to_rgb565(text_bg_image, self.whisplay.LCD_WIDTH, text_area_height))
 
-        
+
 
     def render_main_text(self, main_text_image, area_height, draw, text, scroll_speed=2):
         global current_scroll_top
@@ -141,7 +145,7 @@ class RenderThread(threading.Thread):
                 fin_show_lines = True
             elif fin_show_lines is False:
                 render_y += line_height
-        
+
         # render_text
         render_text = "".join(display_lines)
         if self.current_render_text != render_text:
@@ -159,12 +163,12 @@ class RenderThread(threading.Thread):
         # Update scroll position
         if scroll_speed > 0 and current_scroll_top < (len(lines) + 1) * line_height - area_height:
             current_scroll_top += scroll_speed
-                
+
 
     def render_header(self, image, draw, status, emoji, battery_level, battery_color):
         global current_status, current_emoji, current_battery_level, current_battery_color
         global status_font_size, emoji_font_size, battery_font_size
-        
+
         status_font = ImageFont.truetype(self.font_path, status_font_size)
         emoji_font = ImageFont.truetype(self.font_path, emoji_font_size)
         battery_font = ImageFont.truetype(self.font_path, battery_font_size)
@@ -179,17 +183,17 @@ class RenderThread(threading.Thread):
         # Draw status centered
         status_bbox = status_font.getbbox(current_status)
         status_w = status_bbox[2] - status_bbox[0]
-        TextUtils.draw_mixed_text(draw, image, current_status, status_font, (whisplay.CornerHeight, 0))
+        TextUtils.draw_mixed_text(draw, image, current_status, status_font, (self.whisplay.CornerHeight, 0))
 
         # Draw emoji centered
         emoji_bbox = emoji_font.getbbox(current_emoji)
         emoji_w = emoji_bbox[2] - emoji_bbox[0]
         TextUtils.draw_mixed_text(draw, image, current_emoji, emoji_font, ((image_width - emoji_w) // 2, status_font_size + 8))
-        
+
         # Draw battery icon
         if battery_level is not None:
             self.render_battery(draw, battery_font, battery_level, battery_color, image_width, status_font_size)
-        
+
         return top_height
 
     def render_battery(self, draw, battery_font, battery_level, battery_color, image_width, status_font_size):
@@ -238,7 +242,7 @@ class RenderThread(threading.Thread):
         text_y = battery_y + (battery_height - (battery_font.getmetrics()[0] + battery_font.getmetrics()[1])) // 2
         text_w = text_bbox[2] - text_bbox[0]
         text_x = battery_x + (battery_width - text_w) // 2
-        
+
         luminance = ColorUtils.calculate_luminance(fill_color)
         brightness_threshold = 128 # You can adjust this threshold as needed
         if luminance > brightness_threshold:
@@ -252,11 +256,11 @@ class RenderThread(threading.Thread):
         while self.running:
             self.render_frame(current_status, current_emoji, current_text, current_scroll_top, current_battery_level, current_battery_color)
             time.sleep(frame_interval)
-            
+
     def stop(self):
         self.running = False
 
-def update_display_data(status=None, emoji=None, text=None, 
+def update_display_data(status=None, emoji=None, text=None,
                   scroll_speed=None, battery_level=None, battery_color=None, image_path=None):
     global current_status, current_emoji, current_text, current_battery_level
     global current_battery_color, current_scroll_top, current_scroll_speed, current_image_path
@@ -333,7 +337,7 @@ def on_button_release():
                 send_to_all_clients(notification)
                 # exit camera mode in 2 seconds after capture
                 threading.Timer(2.0, exit_camera_mode).start()
-                
+
         return  # Ignore button presses in camera mode
     """Function executed when button is released"""
     print("[Server] Button released")
@@ -351,12 +355,12 @@ def handle_client(client_socket, addr, whisplay):
             if not data:
                 break
             buffer += data
-            
+
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
                 if not line.strip():
                     continue
-                        
+
                 # print(f"[Socket - {addr}] Received data: {line}")
                 try:
                     content = json.loads(line)
@@ -378,18 +382,18 @@ def handle_client(client_socket, addr, whisplay):
                     if rgbled:
                         rgb255_tuple = ColorUtils.get_rgb255_from_any(rgbled)
                         whisplay.set_rgb_fade(*rgb255_tuple, duration_ms=500)
-                    
+
                     if battery_color:
                         battery_tuple = ColorUtils.get_rgb255_from_any(battery_color)
                     else:
                         battery_tuple = (0, 0, 0)
-                        
+
                     if brightness:
                         whisplay.set_backlight(brightness)
-                        
+
                     if capture_image_path is not None:
                         camera_capture_image_path = capture_image_path
-                    
+
                     if set_camera_mode is not None:
                         if set_camera_mode:
                             print("[Camera] Entering camera mode...")
@@ -402,7 +406,7 @@ def handle_client(client_socket, addr, whisplay):
                                 camera_thread.stop()
                                 camera_thread = None
                             camera_mode = False
-                        
+
                     if (text is not None) or (status is not None) or (emoji is not None) or \
                        (battery_level is not None) or (battery_color is not None) or \
                        (image_path is not None):
@@ -419,7 +423,7 @@ def handle_client(client_socket, addr, whisplay):
                             print(f"[Socket - {addr}] Sent response: {response_to_client}")
                         except Exception as e:
                             print(f"[Socket - {addr}] Response sending error: {e}")
-                            
+
                 except json.JSONDecodeError:
                     client_socket.send(b"ERROR: invalid JSON\n")
                 except Exception as e:
@@ -447,7 +451,7 @@ def start_socket_server(render_thread, host='0.0.0.0', port=12345):
     try:
         while True:
             client_socket, addr = server_socket.accept()
-            client_thread = threading.Thread(target=handle_client, 
+            client_thread = threading.Thread(target=handle_client,
                                            args=(client_socket, addr, whisplay))
             client_thread.daemon = True
             client_thread.start()
@@ -465,13 +469,13 @@ if __name__ == "__main__":
     render_thread = RenderThread(whisplay, "NotoSansSC-Bold.ttf", fps=30)
     render_thread.start()
     start_socket_server(render_thread, host='0.0.0.0', port=12345)
-    
+
     def cleanup_and_exit(signum, frame):
         print("[System] Exiting...")
         render_thread.stop()
         whisplay.cleanup()
         sys.exit(0)
-        
+
     signal.signal(signal.SIGTERM, cleanup_and_exit)
     signal.signal(signal.SIGINT, cleanup_and_exit)
     signal.signal(signal.SIGKILL, cleanup_and_exit)
@@ -483,4 +487,3 @@ if __name__ == "__main__":
             time.sleep(1)
     except KeyboardInterrupt:
         cleanup_and_exit(None, None)
-    
