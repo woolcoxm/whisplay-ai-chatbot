@@ -13,36 +13,56 @@ const setLatestShowedImage = (imagePath: string) => {
 };
 
 // 加载最新生成的图片路径到list中
-const loadLatestGenImg = () => {
-  const files = fs.readdirSync(imageDir);
-  const images = files
-    .filter((file) => /\.(jpg|png)$/.test(file))
-    .sort((a, b) => {
-      const aTime = fs.statSync(path.join(imageDir, a)).mtime.getTime();
-      const bTime = fs.statSync(path.join(imageDir, b)).mtime.getTime();
-      return aTime - bTime;
-    })
-    .map((file) => path.join(imageDir, file));
-  genImgList.push(...images);
-};
+const loadLatestGenImg = async () => {
+  try {
+    const files = await fs.promises.readdir(imageDir);
+    const imagesWithStats = await Promise.all(
+      files
+        .filter((file) => /\.(jpg|png)$/.test(file))
+        .map(async (file) => {
+          const filePath = path.join(imageDir, file);
+          const stats = await fs.promises.stat(filePath);
+          return { file, mtime: stats.mtime.getTime() };
+        })
+    );
 
-loadLatestGenImg();
+    const images = imagesWithStats
+      .sort((a, b) => a.mtime - b.mtime)
+      .map((item) => path.join(imageDir, item.file));
+
+    genImgList.push(...images);
+  } catch (error) {
+    console.error("Error loading generated images:", error);
+  }
+};
 
 // 加载最新拍摄的图片路径到list中
-const loadLatestCapturedImg = () => {
-  const files = fs.readdirSync(cameraDir);
-  const images = files
-    .filter((file) => /\.(jpg|png)$/.test(file))
-    .sort((a, b) => {
-      const aTime = fs.statSync(path.join(cameraDir, a)).mtime.getTime();
-      const bTime = fs.statSync(path.join(cameraDir, b)).mtime.getTime();
-      return aTime - bTime;
-    })
-    .map((file) => path.join(cameraDir, file));
-  capturedImgList.push(...images);
+const loadLatestCapturedImg = async () => {
+  try {
+    const files = await fs.promises.readdir(cameraDir);
+    const imagesWithStats = await Promise.all(
+      files
+        .filter((file) => /\.(jpg|png)$/.test(file))
+        .map(async (file) => {
+          const filePath = path.join(cameraDir, file);
+          const stats = await fs.promises.stat(filePath);
+          return { file, mtime: stats.mtime.getTime() };
+        })
+    );
+
+    const images = imagesWithStats
+      .sort((a, b) => a.mtime - b.mtime)
+      .map((item) => path.join(cameraDir, item.file));
+
+    capturedImgList.push(...images);
+  } catch (error) {
+    console.error("Error loading captured images:", error);
+  }
 };
 
-loadLatestCapturedImg();
+export const initImageLists = async () => {
+  await Promise.all([loadLatestGenImg(), loadLatestCapturedImg()]);
+};
 
 export const setLatestGenImg = (imgPath: string) => {
   genImgList.push(imgPath);
