@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import spidev
 import time
+import threading
 
 
 class WhisplayBoard:
@@ -46,6 +47,9 @@ class WhisplayBoard:
         self.red_pwm.start(0)
         self.green_pwm.start(0)
         self.blue_pwm.start(0)
+
+        self._fade_cancel_event = threading.Event()
+        self._fade_thread = None
 
         # Initialize button
         GPIO.setup(self.BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -210,23 +214,41 @@ class WhisplayBoard:
         self._current_b = b
 
     def set_rgb_fade(self, r_target, g_target, b_target, duration_ms=100):
-        steps = 20  # Adjust steps to control fade smoothness
-        delay_ms = duration_ms / steps
+        if self._fade_thread and self._fade_thread.is_alive():
+            self._fade_cancel_event.set()
+            self._fade_thread.join()
 
-        r_step = (r_target - self._current_r) / steps
-        g_step = (g_target - self._current_g) / steps
-        b_step = (b_target - self._current_b) / steps
+        self._fade_cancel_event.clear()
 
-        for _ in range(steps + 1):
-            r_interim = int(self._current_r + _ * r_step)
-            g_interim = int(self._current_g + _ * g_step)
-            b_interim = int(self._current_b + _ * b_step)
-            self.set_rgb(
-                max(0, min(255, r_interim)),
-                max(0, min(255, g_interim)),
-                max(0, min(255, b_interim)),
-            )
-            time.sleep(delay_ms / 1000.0)
+        def fade_worker():
+            start_r = self._current_r
+            start_g = self._current_g
+            start_b = self._current_b
+
+            steps = 20
+            delay_sec = (duration_ms / steps) / 1000.0
+
+            r_diff = r_target - start_r
+            g_diff = g_target - start_g
+            b_diff = b_target - start_b
+
+            for i in range(1, steps + 1):
+                if self._fade_cancel_event.is_set():
+                    return
+
+                r_new = int(start_r + (r_diff * i / steps))
+                g_new = int(start_g + (g_diff * i / steps))
+                b_new = int(start_b + (b_diff * i / steps))
+
+                self.set_rgb(
+                    max(0, min(255, r_new)),
+                    max(0, min(255, g_new)),
+                    max(0, min(255, b_new)),
+                )
+                time.sleep(delay_sec)
+
+        self._fade_thread = threading.Thread(target=fade_worker)
+        self._fade_thread.start()
 
     def button_pressed(self):
         return GPIO.input(self.BUTTON_PIN) == 0
@@ -256,6 +278,9 @@ class WhisplayBoard:
 
     # ========== Cleanup ==========
     def cleanup(self):
+        if self._fade_thread and self._fade_thread.is_alive():
+            self._fade_cancel_event.set()
+            self._fade_thread.join()
         self.spi.close()
         self.red_pwm.stop()
         self.green_pwm.stop()
