@@ -109,6 +109,10 @@ class EmojiUtils:
 
   @staticmethod
   def get_local_emoji_svg_image(char, size):
+    global emoji_image_cache
+    if (char, size) in emoji_image_cache:
+      return emoji_image_cache[(char, size)]
+
     filename = EmojiUtils.emoji_to_filename(char)
     path = os.path.join("emoji_svg", filename)
     if not os.path.exists(path):
@@ -117,16 +121,24 @@ class EmojiUtils:
     try:
       png_bytes = cairosvg.svg2png(url=path, output_width=size, output_height=size)
       img = Image.open(BytesIO(png_bytes)).convert("RGBA")
+      emoji_image_cache[(char, size)] = img
       return img
     except Exception as e:
       print(f"[错误] 渲染 SVG 出错: {e}")
       return None
 
   @staticmethod
+  def clean_emoji_image_cache():
+    """清除 Emoji 图像缓存。"""
+    global emoji_image_cache
+    emoji_image_cache = {}
+
+  @staticmethod
   def is_emoji(char):
     return unicodedata.category(char) in ('So', 'Sk') or ord(char) > 0x1F000
 
 
+emoji_image_cache = {}
 char_size_cache = {}
 line_image_cache = {}
 
